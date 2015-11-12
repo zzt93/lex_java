@@ -2,6 +2,7 @@
 1. how to write a -.l file: 
  - structure:
      declarations
+     regular expressions definition
      translation rules
      auxiliary functions
 
@@ -13,11 +14,13 @@
     -- %{ have to at the beginning of line %} have to at the beginning of the line
 
  - supported regex in the -.l file:
-   - have to use {} to surround your predefined regex expression
+   - have to use `{}` to surround your predefined regex expression, not add any other char(include space) between `{}`
+   or it will fail to figure out it.
+   - not support nested parenthesis, like `(a(b+)c)+` or `RE (..)` then `(RE)`.
 
 
  - mis:
-     a. not allow multiple line comment for -.l components,
+     a. not allow multiple line comment for '*.l' components,
      but allow it in translation rule or in your method
 
  

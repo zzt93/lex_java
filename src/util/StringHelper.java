@@ -7,6 +7,8 @@ package util;
  */
 public class StringHelper {
 
+    public static final String ONE_LINE_COMMENT = "[\\s]*((/\\*.*\\*/)|//.*)";
+
     public static void replaceAll(StringBuilder builder, String from, String to) {
         int index = builder.indexOf(from);
         while (index != -1) {
@@ -19,5 +21,9 @@ public class StringHelper {
     public static void replace(StringBuilder builder, String from, String to) {
         int index = builder.indexOf(from);
         builder.replace(index, index + from.length(), to);
+    }
+
+    public static boolean emptyLineOrComment(String line) {
+        return line.trim().isEmpty() || line.matches(ONE_LINE_COMMENT);
     }
 }

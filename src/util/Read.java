@@ -1,9 +1,124 @@
 package util;
 
+import lex.LexInput;
+import lex.Regex;
+import lex.lexOutput;
+
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Scanner;
+import java.util.function.BiConsumer;
+
 /**
  * Created by zzt on 11/11/15.
  * <p>
  * Usage:
  */
 public class Read {
+
+    /**
+     * read '*.l' file store enum store method
+     *
+     * @return the string represented large regex
+     */
+    public static HashMap<String, String> parseFileUpdateOut(StringBuilder cFile, String fileName) throws FileNotFoundException {
+        // handle enum part
+        // find the start of enum definition
+        Scanner scanner = new Scanner(new File(fileName));
+
+        while (scanner.hasNext() && !scanner.nextLine().equals(LexInput.ENUM_S)) ;
+
+        String line;
+        StringBuilder enums = new StringBuilder();
+        while (scanner.hasNext() && !(line = scanner.nextLine()).equals(LexInput.ENUM_E)) {
+            if (StringHelper.emptyLineOrComment(line)) {
+                continue;
+            }
+            enums.append(line).append("\n");
+        }
+        int enumCount = enums.toString().split(",").length;
+        StringHelper.replace(cFile, lexOutput.ENUM_NUM, enums.toString());
+        StringHelper.replace(cFile, lexOutput.ENUM_COUNT, "" + enumCount);
+
+        // find next section
+        while (scanner.hasNext() && !scanner.nextLine().equals(LexInput.SECTION_DELIM)) ;
+
+        // handle regex rule
+        HashMap<String, String> regexMap = readAndStorePair(
+                (regexs, patternPair) -> {
+                    patternPair[0] = "{" + patternPair[0] + "}";
+                    HashSet<String> classes =
+                            Regex.getMatchedStrings(Regex.classPattern, patternPair[1]);
+                    classes.forEach(s -> {
+                        //update patternPair[1]
+                        String replacement = regexs.get(s);
+                        if (replacement == null) {
+                            throw new IllegalArgumentException("unknown regex class " + s);
+                        }
+                        patternPair[1] = patternPair[1].replace(s, replacement);
+                    });
+                },
+                scanner);
+
+        // store translation rule
+        HashMap<String, String> translation = readAndStorePair(
+                (trans, transPair) -> {
+                    HashSet<String> classes =
+                            Regex.getMatchedStrings(Regex.classPattern, transPair[0]);
+                    classes.forEach(
+                            rClass -> {
+                                String classStr = regexMap.get(rClass);
+                                if (classStr == null) {
+                                    throw new IllegalArgumentException("unknown regex class " + rClass);
+                                }
+                                transPair[0] = Regex.preProcessRegex(transPair[0].replace(rClass, classStr));
+                            }
+                    );
+                },
+                scanner);
+
+        // store functions
+        StringBuilder functions = new StringBuilder();
+        while (scanner.hasNext()) {
+            if ((line = scanner.nextLine()).trim().isEmpty()) {
+                continue;
+            }
+            functions.append(line).append("\n");
+        }
+        StringHelper.replace(cFile, lexOutput.FUNCTION_NUM, functions.toString());
+
+
+        // return merged regex
+        // add '.' in every key
+        // merge by 'or'
+        //        translation.keySet();
+        //                .forEach(s -> {
+        //            s = Regex.addDot(s);
+        //            res.append("(").append(s).append(")").append("|");
+        //        });
+        //        res.deleteCharAt(res.length() - 1);
+        translation.keySet().forEach(s -> {
+            s = Regex.addDot(s);
+        });
+        return translation;
+    }
+
+    private static HashMap<String, String> readAndStorePair(BiConsumer<HashMap<String, String>, String[]> handle, Scanner scanner) {
+        String line;
+        HashMap<String, String> regexs = new HashMap<>();
+        while (scanner.hasNext()) {
+            line = scanner.nextLine();
+            if (StringHelper.emptyLineOrComment(line)) {
+                continue;
+            } else if (line.equals(LexInput.SECTION_DELIM)) {
+                break;
+            }
+            String[] patternPair = line.split(LexInput.BET_PATTERN, 2);
+            handle.accept(regexs, patternPair);
+            regexs.put(patternPair[0], patternPair[1]);
+        }
+        return regexs;
+    }
 }

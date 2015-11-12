@@ -7,7 +7,7 @@ enum {
 $2
 
 // use last enum element to replace it
-int count[$3 + 1];
+int count[$3];
 
 int main() {
     char word[256];
