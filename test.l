@@ -6,8 +6,11 @@ IF, THEN, ELSE, ID, NUMBER, RELOP
 
 %%
 /* regular definitions */
+// tested: [ \t\n+]
+// ws {delim}
 delim [ \t\n]
 ws {delim}+
+//letter [A-Zabx-z]
 letter [A-Za-z]
 digit [0-9]
 id {letter}({letter}|{digit})*

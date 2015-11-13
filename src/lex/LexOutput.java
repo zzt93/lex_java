@@ -5,7 +5,7 @@ package lex;
  * <p>
  * Usage:
  */
-public class lexOutput {
+public class LexOutput {
     public static final String C_HEADER =
             "#include <stdlib.h>\n" +
                     "#include <stdio.h>\n\n";

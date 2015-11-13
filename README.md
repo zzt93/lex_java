@@ -16,7 +16,8 @@
  - supported regex in the -.l file:
    - have to use `{}` to surround your predefined regex expression, not add any other char(include space) between `{}`
    or it will fail to figure out it.
-   - not support nested parenthesis, like `(a(b+)c)+` or `RE (..)` then `(RE)`.
+   - support nested parenthesis, like `(a(b+)c)+` or `RE (..)` then `(RE+)`.
+   - not support wild card character '.', but using this also have to escape it for I use it internally
 
 
  - mis:

@@ -1,15 +1,18 @@
 package lex;
 
 import util.Read;
+import util.Stack;
 
 import java.io.FileNotFoundException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Scanner;
+import java.util.Set;
 
 /**
  * Created by zzt on 11/11/15.
  * <p>
- * Usage: a java version lex, for detail see README.md
+ * Usage: a java version lex, for detail see README.md suppose all your regex are valid!
  */
 
 public class Lex {
@@ -22,7 +25,7 @@ public class Lex {
         this.fileName = fileName;
         cFile = new StringBuilder();
 
-        cFile.append(lexOutput.C_HEADER + lexOutput.C_BODY);
+        cFile.append(LexOutput.C_HEADER + LexOutput.C_BODY);
     }
 
     /**
@@ -33,7 +36,7 @@ public class Lex {
     public void produceFile(String output) throws FileNotFoundException {
         HashMap<String, String> regex = Read.parseFileUpdateOut(cFile, this.fileName);
         regex.keySet().forEach(System.out::println);
-        //        toSuffix();
+        toSuffix(regex.keySet()).values().forEach(System.out::println);
         //        makeNFA();
         //        toDFA();
         //        toDFAo();
@@ -68,12 +71,52 @@ public class Lex {
 
     /**
      * 2. convert to suffix expression use a stack
+     *
+     * @param strings The regex strings
+     *
+     * @return map:regex => operator and operand
      */
-    private void toSuffix() {
-
+    private HashMap<String, ArrayList<Op>> toSuffix(Set<String> strings) {
+        HashMap<String, ArrayList<Op>> res = new HashMap<>();
+        for (String s : strings) {
+            String tmp = s + ")";
+            ArrayList<Op> suffix = new ArrayList<>(tmp.length());
+            Stack<Operators> operators = new Stack<>();
+            operators.push(Operators.LEFT_P);
+            for (int i = 0; i < tmp.length(); i++) {
+                char c = tmp.charAt(i);
+                if (c == '\\') {
+                    i++;
+                    char next = tmp.charAt(i);
+                    suffix.add(new Operand(next));
+                } else if (c == '(') {
+                    operators.push(Operators.LEFT_P);
+                } else if (c == ')') {
+                    Operators operator = operators.pop();
+                    while (!operator.equal(Operators.LEFT_P)) {
+                        suffix.add(operator);
+                        operator = operators.pop();
+                    }
+                } else if (Operators.isOperator(c)) {
+                    Operators top = operators.top();
+                    Operators operator = Operators.getOperator(c);
+                    if (top.lowPrecedence(operator)) {
+                        operators.push(operator);
+                    } else {
+                        suffix.add(operators.pop());
+                        operators.push(operator);
+                    }
+                } else { // plain operands
+                    suffix.add(new Operand(c));
+                }
+            }
+            res.put(s, suffix);
+        }
+        return res;
     }
 
     public static void main(String[] args) throws FileNotFoundException {
-        new Lex("test.l").produceFile("res");
+        Lex lex = new Lex("test.l");
+        lex.produceFile("res");
     }
 }

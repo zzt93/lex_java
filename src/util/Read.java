@@ -1,8 +1,8 @@
 package util;
 
 import lex.LexInput;
+import lex.LexOutput;
 import lex.Regex;
-import lex.lexOutput;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -10,6 +10,8 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Scanner;
 import java.util.function.BiConsumer;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Created by zzt on 11/11/15.
@@ -39,8 +41,8 @@ public class Read {
             enums.append(line).append("\n");
         }
         int enumCount = enums.toString().split(",").length;
-        StringHelper.replace(cFile, lexOutput.ENUM_NUM, enums.toString());
-        StringHelper.replace(cFile, lexOutput.ENUM_COUNT, "" + enumCount);
+        StringHelper.replace(cFile, LexOutput.ENUM_NUM, enums.toString());
+        StringHelper.replace(cFile, LexOutput.ENUM_COUNT, "" + enumCount);
 
         // find next section
         while (scanner.hasNext() && !scanner.nextLine().equals(LexInput.SECTION_DELIM)) ;
@@ -76,6 +78,7 @@ public class Read {
                                 transPair[0] = Regex.preProcessRegex(transPair[0].replace(rClass, classStr));
                             }
                     );
+                    transPair[0] = Regex.addConcat(transPair[0]);
                 },
                 scanner);
 
@@ -87,7 +90,7 @@ public class Read {
             }
             functions.append(line).append("\n");
         }
-        StringHelper.replace(cFile, lexOutput.FUNCTION_NUM, functions.toString());
+        StringHelper.replace(cFile, LexOutput.FUNCTION_NUM, functions.toString());
 
 
         // return merged regex
@@ -95,13 +98,11 @@ public class Read {
         // merge by 'or'
         //        translation.keySet();
         //                .forEach(s -> {
-        //            s = Regex.addDot(s);
+        //            s = Regex.addConcat(s);
         //            res.append("(").append(s).append(")").append("|");
         //        });
         //        res.deleteCharAt(res.length() - 1);
-        translation.keySet().forEach(s -> {
-            s = Regex.addDot(s);
-        });
+
         return translation;
     }
 
@@ -116,9 +117,44 @@ public class Read {
                 break;
             }
             String[] patternPair = line.split(LexInput.BET_PATTERN, 2);
+            // for ecah != fori
+            //            for (String s : patternPair) {
+            //                s = handleEscapeChar(s);
+            //            }
+            for (int i = 0; i < patternPair.length; i++) {
+                patternPair[i] = handleEscapeChar(patternPair[i]);
+            }
             handle.accept(regexs, patternPair);
             regexs.put(patternPair[0], patternPair[1]);
         }
         return regexs;
+    }
+
+    public static String handleEscapeChar(String string) {
+        StringBuilder res = new StringBuilder(string);
+        Pattern escapeChar = Pattern.compile("\\\\.");
+        Matcher matcher = escapeChar.matcher(string);
+        HashSet<String> set = new HashSet<>();
+        while (matcher.find()) {
+            set.add(matcher.group());
+        }
+        set.forEach(
+                s -> {
+                    switch (s.charAt(s.length() - 1)) {
+                        case 'n':
+                            StringHelper.replaceAll(res, s, "\n");
+                            break;
+                        case 'r':
+                            StringHelper.replaceAll(res, s, "\r");
+                            break;
+                        case 't':
+                            StringHelper.replaceAll(res, s, "\t");
+                            break;
+                        default:
+                            System.err.println("not support it " + s);
+                    }
+                }
+        );
+        return res.toString();
     }
 }
