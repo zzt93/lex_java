@@ -1,5 +1,6 @@
 package lex;
 
+import graph.Graph;
 import util.Read;
 import util.Stack;
 
@@ -36,8 +37,9 @@ public class Lex {
     public void produceFile(String output) throws FileNotFoundException {
         HashMap<String, String> regex = Read.parseFileUpdateOut(cFile, this.fileName);
         regex.keySet().forEach(System.out::println);
-        toSuffix(regex.keySet()).values().forEach(System.out::println);
-        //        makeNFA();
+        HashMap<String, ArrayList<Op>> regex2suffix = toSuffix(regex.keySet());
+        regex2suffix.values().forEach(System.out::println);
+        makeNFA(regex, regex2suffix);
         //        toDFA();
         //        toDFAo();
         // write file
@@ -63,9 +65,16 @@ public class Lex {
      * 3. analyze suffix expresion, edge(a, b) operator(*, ., |) -- combine them into a big map, regex 's' -- NFA, N(s),
      * regex 't' -- NFA, N(t) - r = s|t: merge the start of both - r = st: merge the start of s and end of t - r = s+:
      * p102 - r = s*: p102 use a linked list of linked list
+     * @param regex
+     * @param regex2suffix
      */
-    private void makeNFA() {
+    private void makeNFA(HashMap<String, String> regex, HashMap<String, ArrayList<Op>> regex2suffix) {
+        Graph res = new Graph();
+        regex2suffix.forEach(
+                (s, suffix) -> {
 
+                }
+        );
     }
 
 
