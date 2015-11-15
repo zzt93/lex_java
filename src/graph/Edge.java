@@ -21,9 +21,24 @@ public class Edge {
         to = new Vertex();
     }
 
-    public Edge(Vertex main, Vertex src) {
-        from = main;
-        to = src;
+    /**
+     * create a epsilon edge
+     * @param from From edge
+     * @param to To edge
+     */
+    public Edge(Vertex from, Vertex to) {
+        this.from = from;
+        this.to = to;
+    }
+
+    public Edge() {
+
+    }
+
+    public Edge(Vertex from, Vertex to, char c) {
+        this.from = from;
+        this.to = to;
+        this.operand = c;
     }
 
     public boolean isEpsilon() {
@@ -36,5 +51,29 @@ public class Edge {
 
     public Vertex getTo() {
         return to;
+    }
+
+    public char getOperand() {
+        return operand;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        Edge edge = (Edge) o;
+
+        return operand == edge.operand;
+
+    }
+
+    @Override
+    public int hashCode() {
+        return (int) operand;
+    }
+
+    public static Edge epsilon() {
+        return new Edge();
     }
 }

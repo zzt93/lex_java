@@ -1,5 +1,7 @@
 package lex;
 
+import graph.Graph;
+
 /**
  * Created by zzt on 11/12/15.
  * <p>
@@ -35,4 +37,13 @@ public class LexOutput {
             "int lexical(char *str) {\n" +
             "    $4\n" +
             "}";
+
+    public static void outPutCSrc(Graph dfao) {
+        String method = produceSwitch(dfao);
+        // write to file
+    }
+
+    private static String produceSwitch(Graph dfao) {
+        return null;
+    }
 }

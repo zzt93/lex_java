@@ -30,10 +30,10 @@ public enum Operators implements Op {
             Vertex start = g.start();
             Vertex nStart = new Vertex();
             Vertex nEnd = new Vertex();
-            nStart.addEdge(new Edge(nStart, start));
-            end.addEdge(new Edge(end, nEnd));
+            nStart.addOutEdge(new Edge(nStart, start));
+            end.addOutEdge(new Edge(end, nEnd));
 
-            end.addEdge(new Edge(end, start));
+            end.addOutEdge(new Edge(end, start));
             graphStack.push(g);
         }
     },
@@ -45,10 +45,10 @@ public enum Operators implements Op {
             Vertex start = g.start();
             Vertex nStart = new Vertex();
             Vertex nEnd = new Vertex();
-            nStart.addEdge(new Edge(nStart, start));
-            end.addEdge(new Edge(end, nEnd));
+            nStart.addOutEdge(new Edge(nStart, start));
+            end.addOutEdge(new Edge(end, nEnd));
 
-            nStart.addEdge(new Edge(nStart, nEnd));
+            nStart.addOutEdge(new Edge(nStart, nEnd));
             graphStack.push(g);
         }
     },
@@ -60,11 +60,11 @@ public enum Operators implements Op {
             Vertex start = g.start();
             Vertex nStart = new Vertex();
             Vertex nEnd = new Vertex();
-            nStart.addEdge(new Edge(nStart, start));
-            end.addEdge(new Edge(end, nEnd));
+            nStart.addOutEdge(new Edge(nStart, start));
+            end.addOutEdge(new Edge(end, nEnd));
 
-            end.addEdge(new Edge(end, start));
-            nStart.addEdge(new Edge(nStart, nEnd));
+            end.addOutEdge(new Edge(end, start));
+            nStart.addOutEdge(new Edge(nStart, nEnd));
             graphStack.push(g);
         }
     },

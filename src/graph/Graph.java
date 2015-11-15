@@ -4,9 +4,7 @@ import lex.Op;
 import lex.Operators;
 import util.Stack;
 
-import java.util.ArrayList;
-import java.util.LinkedList;
-import java.util.NoSuchElementException;
+import java.util.*;
 
 /**
  * Created by zzt on 11/13/15.
@@ -15,8 +13,9 @@ import java.util.NoSuchElementException;
  */
 public class Graph {
 
-    private LinkedList<Vertex> vertexes = new LinkedList<>();
+    private LinkedList<Vertex> vertices = new LinkedList<>();
     private ArrayList<Vertex> exit = new ArrayList<>();
+    private HashMap<VertexSet, VertexSet> core2closure = new HashMap<>();
 
     public Graph(ArrayList<Op> suffix) {
         Stack<Graph> stack = new Stack<>();
@@ -32,22 +31,31 @@ public class Graph {
     }
 
     private static void mergeEmpty(Graph res, Graph src) {
-        res.vertexes.addAll(src.vertexes);
+        res.vertices.addAll(src.vertices);
         res.exit.addAll(src.exit);
     }
 
+    public static void checkEndAndSetTranslation(Graph nfa, VertexSet stateSet, Vertex vertex) {
+        stateSet.getIndexes().forEach(index -> {
+            Vertex v = nfa.getVertex(index);
+            if (v.isEndState()) {
+                vertex.setTranslation(v.getTranslation());
+            }
+        });
+    }
+
     public boolean isEmpty() {
-        return vertexes.isEmpty() || exit.isEmpty();
+        return vertices.isEmpty() || exit.isEmpty();
     }
 
     public Graph() {
     }
 
     public Vertex start() {
-        if (vertexes.size() < 1) {
+        if (vertices.size() < 1) {
             throw new NoSuchElementException();
         }
-        return vertexes.get(0);
+        return vertices.get(0);
     }
 
     public boolean oneExit() {
@@ -62,11 +70,11 @@ public class Graph {
     }
 
     public boolean canMergeEnd() {
-        return exit.size() == 1 && !exit.get(0).ifEndState();
+        return exit.size() == 1 && !exit.get(0).isEndState();
     }
 
-    public LinkedList<Vertex> getVertexes() {
-        return vertexes;
+    public LinkedList<Vertex> getVertices() {
+        return vertices;
     }
 
     public static void mergeGraph(Graph res, Graph src, Operators op) {
@@ -96,19 +104,19 @@ public class Graph {
                 res.updateEnd(src.end());
                 break;
         }
-        res.vertexes.addAll(src.vertexes);
+        res.vertices.addAll(src.vertices);
     }
 
     private void addStart(Vertex vertex) {
-        vertexes.add(0, vertex);
+        vertices.add(0, vertex);
     }
 
     private void updateEnd(Vertex end) {
         exit.set(0, end);
     }
 
-    public Graph addVertex(Vertex from) {
-        vertexes.add(from);
+    public Graph addVertex(Vertex v) {
+        vertices.add(v);
         return this;
     }
 
@@ -118,29 +126,77 @@ public class Graph {
      * @param v    The start vertex of this dfs
      * @param edge The edge to travel
      *
-     * @return The dfs result set
+     * @return The dfs result set -- which have to use the index to identify
+     * every vertex uniquely
      */
-    public ArrayList<Vertex> dfs(Vertex v, Edge edge) {
-        ArrayList<Vertex> res = new ArrayList<>();
+    public VertexSet dfs(Vertex v, Edge edge) {
+        VertexSet res = new VertexSet();
         recursiveDfs(res, v, edge);
-        return epsilonClosure(res);
+        recoverTravelState(res);
+        // TODO check the hashCode and equals of ArrayList
+        if (core2closure.containsKey(res)) {
+            return core2closure.get(res);
+        }
+        VertexSet closure = epsilonClosure(res);
+        core2closure.put(res, closure);
+        return closure;
     }
 
-    private void recursiveDfs(ArrayList<Vertex> res, Vertex v, Edge target) {
-        if (v.visited()) {
+    /**
+     * Remember to recover the state of vertex when finish dfs
+     *  @param res The arrayList to contain the visited vertices index
+     * @param v The start vertex
+     * @param target The target edge to through
+     */
+    private void recursiveDfs(VertexSet res, Vertex v, Edge target) {
+        if (!v.notVisit()) {
             return;
         }
         v.setTravel(TraversalState.VISITING);
-        for (Edge edge1 : v.getOutEdges()) {
-            if (target.equals(edge1)) {
-                recursiveDfs(res, edge1.getTo(), target);
-            }
-        }
+        v.getOutEdges().stream().filter(target::equals).forEach(edge -> recursiveDfs(res, edge.getTo(), target));
         v.setTravel(TraversalState.VISITED);
-        res.add(v);
+        res.add(v.ordinal());
     }
 
-    private ArrayList<Vertex> epsilonClosure(ArrayList<Vertex> vertexes) {
-        return null;
+    public VertexSet epsilonClosure(VertexSet vertexesIndex) {
+        VertexSet tmp = new VertexSet();
+        for (Integer i : vertexesIndex.getIndexes()) {
+            recursiveDfs(tmp, vertices.get(i), Edge.epsilon());
+        }
+        recoverTravelState(tmp);
+        vertexesIndex.addAll(tmp);
+        return vertexesIndex;
+    }
+
+    private void recoverTravelState(VertexSet tmp) {
+        for (Integer i : tmp.getIndexes()) {
+            vertices.get(i).setTravel(TraversalState.NOT_VISIT);
+        }
+    }
+
+    public void makeIndex() {
+        for (int i = 0; i < vertices.size(); i++) {
+            vertices.get(i).setIndex(i);
+        }
+    }
+
+    public Vertex getVertex(Integer index) {
+        return vertices.get(index);
+    }
+
+    public HashMap<Character, VertexSet> dfs(VertexSet integers) {
+        HashMap<Character, VertexSet> res = new HashMap<>();
+
+        for (Integer index : integers.getIndexes()) {
+            Vertex vertex = vertices.get(index);
+            for (Edge edge : vertex.getOutEdges()) {
+                if (edge.isEpsilon()) {
+                    continue;
+                }
+                VertexSet vertexes = dfs(vertex, edge);
+                res.put(edge.getOperand(), vertexes);
+            }
+        }
+        return res;
     }
 }

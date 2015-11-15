@@ -9,15 +9,16 @@ import java.util.ArrayList;
  */
 public class Vertex {
 
+    private ArrayList<Edge> outEdges = new ArrayList<>();
+
     private TraversalState state = TraversalState.NOT_VISIT;
+    private int index;
 
     // if this is end state, it will be the translation rule
     private String translation = null;
 
-    private ArrayList<Edge> outEdges = new ArrayList<>();
-    private TraversalState travel;
 
-    public boolean ifEndState() {
+    public boolean isEndState() {
         return translation != null;
     }
 
@@ -27,10 +28,6 @@ public class Vertex {
 
     public void setTranslation(String translation) {
         this.translation = translation;
-    }
-
-    public TraversalState getState() {
-        return state;
     }
 
     public ArrayList<Edge> getOutEdges() {
@@ -53,20 +50,28 @@ public class Vertex {
             e1 = new Edge(main, newVertex);
             e2 = new Edge(src, newVertex);
         }
-        newVertex.addEdge(e1);
-        newVertex.addEdge(e2);
+        newVertex.addOutEdge(e1);
+        newVertex.addOutEdge(e2);
         return newVertex;
     }
 
-    public void addEdge(Edge edge) {
+    public void addOutEdge(Edge edge) {
         outEdges.add(edge);
     }
 
-    public boolean visited() {
-        return state == TraversalState.VISITED;
+    public boolean notVisit() {
+        return state == TraversalState.NOT_VISIT;
     }
 
     public void setTravel(TraversalState travel) {
-        this.travel = travel;
+        this.state = travel;
+    }
+
+    public Integer ordinal() {
+        return index;
+    }
+
+    public void setIndex(int index) {
+        this.index = index;
     }
 }

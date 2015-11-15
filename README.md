@@ -21,8 +21,9 @@
 
 
  - mis:
-     a. not allow multiple line comment for '*.l' components,
+   - not allow multiple line comment for '*.l' components,
      but allow it in translation rule or in your method
+   - if a single word is in multiple regex range, output is undefined.
 
  
  
