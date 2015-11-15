@@ -1,5 +1,10 @@
 package lex;
 
+import graph.Edge;
+import graph.Graph;
+import graph.Vertex;
+import util.Stack;
+
 /**
  * Created by zzt on 11/12/15.
  * <p>
@@ -7,12 +12,81 @@ package lex;
  */
 public enum Operators implements Op {
 
-    LEFT_P('(', 10), RIGHT_P(')', -1),
+    LEFT_P('(', 10) {
+        @Override
+        public void operateOnStack(Stack<Graph> graphStack) {}
+    },
+    RIGHT_P(')', -1) {
+        @Override
+        public void operateOnStack(Stack<Graph> graphStack) {}
+    },
 
     // Precedence: the first three are equal but larger than following
-    PLUS('+', 1), QUES('?', 1), STAR('*', 1),
+    PLUS('+', 1) {
+        @Override
+        public void operateOnStack(Stack<Graph> graphStack) {
+            Graph g = graphStack.pop();
+            Vertex end = g.end();
+            Vertex start = g.start();
+            Vertex nStart = new Vertex();
+            Vertex nEnd = new Vertex();
+            nStart.addEdge(new Edge(nStart, start));
+            end.addEdge(new Edge(end, nEnd));
 
-    OR('|', 2), CON('.', 2);
+            end.addEdge(new Edge(end, start));
+            graphStack.push(g);
+        }
+    },
+    QUES('?', 1) {
+        @Override
+        public void operateOnStack(Stack<Graph> graphStack) {
+            Graph g = graphStack.pop();
+            Vertex end = g.end();
+            Vertex start = g.start();
+            Vertex nStart = new Vertex();
+            Vertex nEnd = new Vertex();
+            nStart.addEdge(new Edge(nStart, start));
+            end.addEdge(new Edge(end, nEnd));
+
+            nStart.addEdge(new Edge(nStart, nEnd));
+            graphStack.push(g);
+        }
+    },
+    STAR('*', 1) {
+        @Override
+        public void operateOnStack(Stack<Graph> graphStack) {
+            Graph g = graphStack.pop();
+            Vertex end = g.end();
+            Vertex start = g.start();
+            Vertex nStart = new Vertex();
+            Vertex nEnd = new Vertex();
+            nStart.addEdge(new Edge(nStart, start));
+            end.addEdge(new Edge(end, nEnd));
+
+            end.addEdge(new Edge(end, start));
+            nStart.addEdge(new Edge(nStart, nEnd));
+            graphStack.push(g);
+        }
+    },
+
+    OR('|', 2) {
+        @Override
+        public void operateOnStack(Stack<Graph> graphStack) {
+            Graph sec = graphStack.pop();
+            Graph first = graphStack.pop();
+            Graph.mergeGraph(first, sec, OR);
+            graphStack.push(first);
+        }
+    },
+    CON('.', 2) {
+        @Override
+        public void operateOnStack(Stack<Graph> graphStack) {
+            Graph sec = graphStack.pop();
+            Graph first = graphStack.pop();
+            Graph.mergeGraph(first, sec, CON);
+            graphStack.push(first);
+        }
+    };
 
     private static int length = Operators.values().length;
 

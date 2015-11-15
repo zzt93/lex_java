@@ -1,6 +1,8 @@
 package lex;
 
+import graph.Edge;
 import graph.Graph;
+import graph.Vertex;
 import util.Read;
 import util.Stack;
 
@@ -35,13 +37,13 @@ public class Lex {
      * @param output Write to this file
      */
     public void produceFile(String output) throws FileNotFoundException {
-        HashMap<String, String> regex = Read.parseFileUpdateOut(cFile, this.fileName);
-        regex.keySet().forEach(System.out::println);
-        HashMap<String, ArrayList<Op>> regex2suffix = toSuffix(regex.keySet());
+        HashMap<String, String> regex2translation = Read.parseFileUpdateOut(cFile, this.fileName);
+        regex2translation.keySet().forEach(System.out::println);
+        HashMap<String, ArrayList<Op>> regex2suffix = toSuffix(regex2translation.keySet());
         regex2suffix.values().forEach(System.out::println);
-        makeNFA(regex, regex2suffix);
-        //        toDFA();
-        //        toDFAo();
+        Graph nfa = makeNFA(regex2translation, regex2suffix);
+        Graph dfa = toDFA(nfa);
+        toDFAo(dfa);
         // write file
     }
 
@@ -49,32 +51,53 @@ public class Lex {
     /**
      * 5. new map of DFA by table 5.1 classify by out edge -- merge same class edge 5.2 travel new map of DFAo and
      * produce switch
+     * @param dfa The dfa graph
      */
-    private void toDFAo() {
+    private void toDFAo(Graph dfa) {
 
     }
 
     /**
-     * 4. travel the map -- NFA 4.1 to produce table of new state -- closure using set
+     * 4. travel the map -- NFA -- to produce table of new state
+     *
+     * @param nfa The NFA to convert
      */
-    private void toDFA() {
+    private Graph toDFA(Graph nfa) {
+        Graph dfa = new Graph();
+        for (Vertex vertex : nfa.getVertexes()) {
+            ArrayList<Vertex> vertexes = new ArrayList<>();
+            for (Edge edge : vertex.getOutEdges()) {
+                vertexes = nfa.dfs(vertex, edge);
 
+            }
+        }
+        return dfa;
     }
 
     /**
-     * 3. analyze suffix expresion, edge(a, b) operator(*, ., |) -- combine them into a big map, regex 's' -- NFA, N(s),
-     * regex 't' -- NFA, N(t) - r = s|t: merge the start of both - r = st: merge the start of s and end of t - r = s+:
-     * p102 - r = s*: p102 use a linked list of linked list
-     * @param regex
-     * @param regex2suffix
+     * 3. analyze suffix expression, edge(a, b) operator(*, ., |) -- combine them into a big map, regex 's' -- NFA,
+     * N(s), regex 't' -- NFA, N(t) - r = s|t: merge the start of both - r = st: merge the start of s and end of t - r =
+     * s+: p102 - r = s*: p102 use a linked list of linked list
+     *
+     * @param regex2translation Map: regex => translation rule
+     * @param regex2suffix      Map: regex => list of operators and operation
+     *
+     * @return a large map of all regex(NFA)
      */
-    private void makeNFA(HashMap<String, String> regex, HashMap<String, ArrayList<Op>> regex2suffix) {
+    private Graph makeNFA(HashMap<String, String> regex2translation, HashMap<String, ArrayList<Op>> regex2suffix) {
         Graph res = new Graph();
+        // make a NFA for every regex
         regex2suffix.forEach(
                 (s, suffix) -> {
-
+                    Graph graph = new Graph(suffix);
+                    // assign translation rule to last vertex
+                    String rule = regex2translation.get(s);
+                    graph.end().setTranslation(rule);
+                    // merge to a large map
+                    Graph.mergeGraph(res, graph, Operators.OR);
                 }
         );
+        return res;
     }
 
 
