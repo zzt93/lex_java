@@ -6,9 +6,10 @@ import graph.Vertex;
 import graph.VertexSet;
 import util.Stack;
 
-import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.util.*;
-import java.util.function.Predicate;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 /**
  * Created by zzt on 11/11/15.
@@ -33,7 +34,7 @@ public class Lex {
      *
      * @param output Write to this file
      */
-    public void produceFile(String output) throws FileNotFoundException {
+    public void produceFile(String output) throws IOException {
         HashMap<String, String> regex2translation = LexInput.parseFileUpdateOut(cFile, this.fileName);
         regex2translation.keySet().forEach(System.out::println);
         System.out.println();
@@ -53,10 +54,11 @@ public class Lex {
         System.out.println();
 
         Graph dfao = toDFAo(dfa);
+        dfao.makeIndex();
         dfao.getVertices().forEach(System.out::println);
-        //
-        //        //5.2 travel new graph of DFAo and produce switch
-        //        LexOutput.outPutCSrc(dfao, output);
+
+        //5.2 travel new graph of DFAo and produce switch
+        LexOutput.outPutCSrc(cFile, dfao, output);
     }
 
 
@@ -69,53 +71,85 @@ public class Lex {
         dfa.makeIndex();
 
         LinkedList<Vertex> vertices = dfa.getVertices();
-        ArrayDeque<VertexSet> sets = classify(new VertexSet(vertices), index -> dfa.getVertex(index).isEndState());
-        int count = sets.size();
+        ArrayDeque<VertexSet> group = classify(new VertexSet(vertices), index -> {
+            Vertex vertex = dfa.getVertex(index);
+            if (!vertex.isEndState()) {
+                return null;
+            }
+            return vertex.getTranslation();
+        });
         HashSet<Character> operands = dfa.getOperands();
-        while (count != 0) {
-            ArrayDeque<VertexSet> tmp = classify(sets.pop(), index -> {
-                for (char operand : operands) {
-                    Vertex vertex = dfa.getVertex(index);
-                    Vertex neighbor = vertex.getNeighbor(operand);
-                    if (neighbor == null) {
-                        return false;
-                    }// TODO: 11/16/15 more choices
+        int lastSize = 0;
+
+        // look back after separate
+        while (lastSize != group.size()) {
+            lastSize = group.size();
+
+            for (Character operand : operands) { // classify by every operand
+                int count = group.size();
+                while (count != 0) {
+                    ArrayDeque<VertexSet> tmp = classify(group.getFirst(), index -> {
+                        Vertex vertex = dfa.getVertex(index);
+                        Vertex neighbor = vertex.getNeighbor(operand);
+                        if (neighbor == null) {
+                            return null;
+                        }
+                        for (VertexSet set : group) {
+                            if (set.contain(neighbor)) {
+                                return set;
+                            }
+                        }
+                        throw new IllegalStateException("should not run to here");
+                    });
+                    // to make getFirst() give different result every loop
+                    group.pop();
+                    // if the result is still one group, this split is a failure
+                    boolean fail = tmp.stream().filter(set -> !set.isEmpty()).count() == 1;
+                    if (fail) {
+                        count--;
+                    } else {
+                        // make sure very group is tried to separate
+                        count = group.size() + tmp.size();
+                    }
+                    List<VertexSet> collect = tmp.stream().filter(set -> !set.isEmpty()).collect(Collectors.toList());
+                    group.addAll(collect);
                 }
-                return true;
-            });
-            if (tmp.isEmpty()) {
-                count--;
-            } else {
-                count = sets.size();
-                sets.addAll(tmp);
             }
         }
-        // merge vertex according to classification
-        for (VertexSet set : sets) {
-            if (set.size() > 1) {
-                dfa.merge(set);
-            } else if (set.size() < 1) {
-                throw new RuntimeException("something wrong with");
-            }
-        }
-        return dfa;
+        // make a new graph according to classification
+        return dfa.mergeVertices(group);
+
     }
 
-    private ArrayDeque<VertexSet> classify(VertexSet vertexSet, Predicate<Integer> rule) {
+    /**
+     * classify vertex in vertexSet by the rule
+     *
+     * @param vertexSet Vertex index set
+     * @param rule      Which return the vertex group the vertex go to
+     *
+     * @return new vertex group
+     */
+    private <T> ArrayDeque<VertexSet> classify(VertexSet vertexSet, Function<Integer, T> rule) {
 
-        ArrayList<Integer> meet = new ArrayList<>();
-        ArrayList<Integer> fail = new ArrayList<>();
+        HashMap<T, VertexSet> setArrayListHashMap = new HashMap<>();
+        VertexSet nullSet = new VertexSet();
         for (Integer integer : vertexSet.getIndexes()) {
-            if (rule.test(integer)) {
-                meet.add(integer);
+            T apply = rule.apply(integer);
+            if (apply == null) {
+                nullSet.add(integer);
+                continue;
+            }
+            if (setArrayListHashMap.containsKey(apply)) {
+                setArrayListHashMap.get(apply).add(integer);
             } else {
-                fail.add(integer);
+                VertexSet list = new VertexSet();
+                list.add(integer);
+                setArrayListHashMap.put(apply, list);
             }
         }
-        ArrayDeque<VertexSet> res = new ArrayDeque<>(2);
-        res.add(new VertexSet(meet));
-        res.add(new VertexSet(fail));
-        return res;
+        ArrayDeque<VertexSet> sets = new ArrayDeque<>(setArrayListHashMap.values());
+        sets.add(nullSet);
+        return sets;
     }
 
     /**
@@ -143,7 +177,7 @@ public class Lex {
 
         for (int i = 0; i < oldState.size(); i++) {
             VertexSet startSet = oldState.get(i);
-            HashMap<Character, VertexSet> destTable = nfa.dfs(startSet);
+            HashMap<Character, VertexSet> destTable = nfa.move(startSet);
             Vertex from = nClosure.get(i);
 
             for (Character character : destTable.keySet()) {
@@ -235,7 +269,7 @@ public class Lex {
         return res;
     }
 
-    public static void main(String[] args) throws FileNotFoundException {
+    public static void main(String[] args) throws IOException {
         Lex lex = new Lex("book.l");
         lex.produceFile("res");
     }

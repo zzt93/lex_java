@@ -33,6 +33,15 @@ public class Graph {
         mergeEmpty(this, res);
     }
 
+    public Graph(Collection<Vertex> values, ArrayList<Vertex> end) {
+        vertices.addAll(values);
+        exit.addAll(end);
+    }
+
+    public Graph() {
+
+    }
+
     private static void mergeEmpty(Graph res, Graph src) {
         res.vertices.addAll(src.vertices);
         res.exit.addAll(src.exit);
@@ -64,8 +73,6 @@ public class Graph {
         return false;
     }
 
-    public Graph() {
-    }
 
     public Vertex start() {
         if (vertices.size() < 1) {
@@ -140,7 +147,7 @@ public class Graph {
     /**
      * Travel the map via specific edge and including the ε closure
      *
-     * @param v    The start vertex of this dfs
+     * @param v    The start vertex of this fs
      * @param edge The edge to travel
      *
      * @return The dfs result set -- which have to use the index to identify every vertex uniquely
@@ -184,6 +191,7 @@ public class Graph {
      * fulfill by the dfs
      *
      * @param verticesIndex ArrayList of Vertices
+     *
      * @return the closure of input
      */
     public VertexSet epsilonClosure(VertexSet verticesIndex) {
@@ -214,7 +222,14 @@ public class Graph {
         return vertices.get(index);
     }
 
-    public HashMap<Character, VertexSet> dfs(VertexSet integers) {
+    /**
+     * start from a vertexSet to move to the adjacent vertices
+     *
+     * @param integers The start vertices's set
+     *
+     * @return The map: edge operand => the target vertices can move to by this kind of edge
+     */
+    public HashMap<Character, VertexSet> move(VertexSet integers) {
         HashMap<Character, VertexSet> res = new HashMap<>();
 
         ArrayList<Integer> indexes = integers.getIndexes();
@@ -241,21 +256,65 @@ public class Graph {
         return res;
     }
 
-    public void merge(VertexSet set) {
-        Vertex main = vertices.get(0);
-        for (Integer integer : set.getIndexes()) {
-            Vertex src = vertices.get(integer);
-            merge(main, src);
-            vertices.remove(src);
+    /**
+     * merge the vertices in the same class, and produce a new graph by them
+     * <p>
+     * for they in the same class, so the out edge of them is always to same class, so choose one set of outEdge is
+     * fine
+     *
+     * @param setQueue The vertex index to merge
+     */
+    public Graph mergeVertices(ArrayDeque<VertexSet> setQueue) {
+        HashMap<Integer, Vertex> setVertexMap = new HashMap<>(setQueue.size());
+        for (VertexSet vertexSet : setQueue) {
+            Vertex v = new Vertex();
+            for (Integer integer : vertexSet.getIndexes()) {
+                setVertexMap.put(integer, v);
+            }
         }
+
+        ArrayList<Vertex> end = new ArrayList<>();
+        for (VertexSet set : setQueue) {
+            // use the first but anyone is fine, for all vertices in the same class are equal
+            Vertex first = vertices.get(set.get(0));
+            Vertex from = setVertexMap.get(first.ordinal());
+            for (Edge edge : first.getOutEdges()) {
+                Vertex to = setVertexMap.get(edge.getTo().ordinal());
+                Edge e = new Edge(from, to, edge.getOperand());
+                if (!from.hasEdge(e)) {
+                    from.addOutEdge(e);
+                }
+            }
+            if (first.isEndState()) {
+                from.setTranslation(first.getTranslation());
+                end.add(from);
+            }
+        }
+
+        // remove duplicate
+        HashSet<Vertex> set = new HashSet<>();
+        set.addAll(setVertexMap.values());
+        Graph graph = new Graph(set, end);
+        // set rigth start point of graph
+        int i;
+        for (i = 0; i < graph.vertices.size(); i++) {
+            Vertex vertex = graph.getVertex(i);
+            if (setVertexMap.get(0) == vertex) {
+                break;
+            }
+        }
+        Vertex tmp = graph.getVertex(0);
+        graph.vertices.set(0, graph.getVertex(i));
+        graph.vertices.set(i, tmp);
+
+        return graph;
     }
 
-    private void merge(Vertex main, Vertex src) {
-        Vertex.mergeOutEdge(main, src);
-        vertices.remove(src);
-        // merge the edge go in `src` to `main`
-        getEdges().stream().filter(edge -> edge.getTo() == src).forEach(edge -> edge.setTo(main));
-    }
+//    private void mergeVertex(Vertex main, Vertex src) {
+//        Vertex.mergeOutEdge(main, src);
+//        // merge the edge go in `src` to `main`
+//        getEdges().stream().filter(edge -> edge.getTo() == src).forEach(edge -> edge.setTo(main));
+//    }
 
     /**
      * For edge.equals() compare just operand so just use the operand
@@ -285,4 +344,5 @@ public class Graph {
     public void addExit(Vertex to) {
         exit.add(to);
     }
+
 }

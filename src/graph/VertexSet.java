@@ -90,4 +90,24 @@ public class VertexSet {
         }
         return -1;
     }
+
+    public boolean contain(Vertex neighbor) {
+        if (neighbor == null) {
+            return false;
+        }
+        for (Integer index : indexes) {
+            if (index == neighbor.getIndex()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public boolean isEmpty() {
+        return indexes.isEmpty();
+    }
+
+    public int get(int i) {
+        return indexes.get(0);
+    }
 }

@@ -25,8 +25,11 @@
    - not allow multiple line comment for '*.l' components,
      but allow it in translation rule or in your method
    - if a single word is in multiple regex range, output is undefined.
+   
 
  
  
 2. How to use produced file: first compile res.c to res.out - input/output:\ input -- a c file output -- run `res.out
  - temp.c` will print the token lists
+ 
+3. The longest token my implementation can recognize is 256

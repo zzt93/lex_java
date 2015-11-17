@@ -112,4 +112,18 @@ public class Vertex {
     public void recoverState() {
         state = TraversalState.NOT_VISIT;
     }
+
+    /**
+     * have to go to the same edge -- i.e. same object to return true
+     * @param e The targe edge
+     * @return result
+     */
+    public boolean hasEdge(Edge e) {
+        for (Edge outEdge : outEdges) {
+            if (outEdge.equals(e) && e.getTo() == outEdge.getTo()) {
+                return true;
+            }
+        }
+        return false;
+    }
 }

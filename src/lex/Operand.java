@@ -2,7 +2,6 @@ package lex;
 
 import graph.Edge;
 import graph.Graph;
-import graph.Vertex;
 import util.Stack;
 
 /**
