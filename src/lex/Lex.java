@@ -8,6 +8,7 @@ import util.Stack;
 
 import java.io.FileNotFoundException;
 import java.util.*;
+import java.util.function.Predicate;
 
 /**
  * Created by zzt on 11/11/15.
@@ -18,7 +19,6 @@ import java.util.*;
 public class Lex {
 
     private final String fileName;
-    Scanner scanner;
     StringBuilder cFile;
 
     public Lex(String fileName) {
@@ -36,30 +36,90 @@ public class Lex {
     public void produceFile(String output) throws FileNotFoundException {
         HashMap<String, String> regex2translation = LexInput.parseFileUpdateOut(cFile, this.fileName);
         regex2translation.keySet().forEach(System.out::println);
+        System.out.println();
+
         HashMap<String, ArrayList<Op>> regex2suffix = toSuffix(regex2translation.keySet());
         regex2suffix.values().forEach(System.out::println);
-        // TODO: 11/15/15 test nfa and dfa
+        System.out.println();
+
         Graph nfa = makeNFA(regex2translation, regex2suffix);
+        nfa.makeIndex();
+        nfa.getVertices().forEach(System.out::println);
+        System.out.println();
+
         Graph dfa = toDFA(nfa);
+        dfa.makeIndex();
+        dfa.getVertices().forEach(System.out::println);
+        System.out.println();
+
         Graph dfao = toDFAo(dfa);
-        // write file
-        LexOutput.outPutCSrc(dfao);
+        dfao.getVertices().forEach(System.out::println);
+        //
+        //        //5.2 travel new graph of DFAo and produce switch
+        //        LexOutput.outPutCSrc(dfao, output);
     }
 
 
     /**
-     * 5. new map of DFA by table 5.1 classify by out edge -- merge same class edge 5.2 travel new map of DFAo and
-     * produce switch
+     * 5 classify by out edge -- merge same class edge
      *
      * @param dfa The dfa graph
      */
     private Graph toDFAo(Graph dfa) {
+        dfa.makeIndex();
+
         LinkedList<Vertex> vertices = dfa.getVertices();
-        return null;
+        ArrayDeque<VertexSet> sets = classify(new VertexSet(vertices), index -> dfa.getVertex(index).isEndState());
+        int count = sets.size();
+        HashSet<Character> operands = dfa.getOperands();
+        while (count != 0) {
+            ArrayDeque<VertexSet> tmp = classify(sets.pop(), index -> {
+                for (char operand : operands) {
+                    Vertex vertex = dfa.getVertex(index);
+                    Vertex neighbor = vertex.getNeighbor(operand);
+                    if (neighbor == null) {
+                        return false;
+                    }// TODO: 11/16/15 more choices
+                }
+                return true;
+            });
+            if (tmp.isEmpty()) {
+                count--;
+            } else {
+                count = sets.size();
+                sets.addAll(tmp);
+            }
+        }
+        // merge vertex according to classification
+        for (VertexSet set : sets) {
+            if (set.size() > 1) {
+                dfa.merge(set);
+            } else if (set.size() < 1) {
+                throw new RuntimeException("something wrong with");
+            }
+        }
+        return dfa;
+    }
+
+    private ArrayDeque<VertexSet> classify(VertexSet vertexSet, Predicate<Integer> rule) {
+
+        ArrayList<Integer> meet = new ArrayList<>();
+        ArrayList<Integer> fail = new ArrayList<>();
+        for (Integer integer : vertexSet.getIndexes()) {
+            if (rule.test(integer)) {
+                meet.add(integer);
+            } else {
+                fail.add(integer);
+            }
+        }
+        ArrayDeque<VertexSet> res = new ArrayDeque<>(2);
+        res.add(new VertexSet(meet));
+        res.add(new VertexSet(fail));
+        return res;
     }
 
     /**
-     * 4. travel the map -- NFA -- to produce table of new state
+     * 4. travel the map -- NFA -- to produce table of new state, and produce the new graph of DFA
      *
      * @param nfa The NFA to convert
      *
@@ -68,36 +128,40 @@ public class Lex {
     private Graph toDFA(Graph nfa) {
         nfa.makeIndex();
 
-        LinkedHashMap<VertexSet, Vertex> oldStateClosure = new LinkedHashMap<>();
+        ArrayList<VertexSet> oldState = new ArrayList<>();
+        ArrayList<Vertex> nClosure = new ArrayList<>();
         VertexSet i0 = new VertexSet();
         i0.add(0);
         Vertex first = new Vertex();
-        VertexSet stateSet = nfa.epsilonClosure(i0);
-        Graph.checkEndAndSetTranslation(nfa, stateSet, first);
-        oldStateClosure.put(stateSet, first);
+        VertexSet vertexSet = nfa.epsilonClosure(i0);
+        Graph.checkEndAndSetTranslation(nfa, vertexSet, first);
+        oldState.add(vertexSet);
+        nClosure.add(first);
 
         Graph dfa = new Graph();
         dfa.addVertex(first);
 
-        for (VertexSet startSet : oldStateClosure.keySet()) {
+        for (int i = 0; i < oldState.size(); i++) {
+            VertexSet startSet = oldState.get(i);
             HashMap<Character, VertexSet> destTable = nfa.dfs(startSet);
-            Vertex from = oldStateClosure.get(startSet);
+            Vertex from = nClosure.get(i);
+
             for (Character character : destTable.keySet()) {
                 Vertex to;
                 VertexSet list = destTable.get(character);
-                if (oldStateClosure.containsKey(list)) {
-                    to = oldStateClosure.get(list);
+                if (VertexSet.contain(oldState, list)) {
+                    int j = VertexSet.get(oldState, list);
+                    to = nClosure.get(j);
                 } else {
                     to = new Vertex();
                     Graph.checkEndAndSetTranslation(nfa, list, to);
-                    oldStateClosure.put(list, to);
+                    oldState.add(list);
+                    nClosure.add(to);
+                    dfa.addVertex(to);
                 }
                 from.addOutEdge(new Edge(from, to, character));
-                dfa.addVertex(from);
-                dfa.addVertex(to);
             }
         }
-
         return dfa;
     }
 
@@ -157,14 +221,11 @@ public class Lex {
                         operator = operators.pop();
                     }
                 } else if (Operators.isOperator(c)) {
-                    Operators top = operators.top();
                     Operators operator = Operators.getOperator(c);
-                    if (top.lowPrecedence(operator)) {
-                        operators.push(operator);
-                    } else {
+                    while (!operators.top().lowPrecedence(operator)) {
                         suffix.add(operators.pop());
-                        operators.push(operator);
                     }
+                    operators.push(operator);
                 } else { // plain operands
                     suffix.add(new Operand(c));
                 }
@@ -175,7 +236,7 @@ public class Lex {
     }
 
     public static void main(String[] args) throws FileNotFoundException {
-        Lex lex = new Lex("test.l");
+        Lex lex = new Lex("book.l");
         lex.produceFile("res");
     }
 }

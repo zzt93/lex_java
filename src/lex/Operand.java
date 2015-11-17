@@ -28,8 +28,9 @@ public class Operand implements Op {
     public void operateOnStack(Stack<Graph> graphStack) {
         Graph g = new Graph();
         Edge edge = new Edge(operand);
-        // have to add from first for it's the beginning of the graph
+        // have to add from first because it's the beginning of the graph
         g.addVertex(edge.getFrom()).addVertex(edge.getTo());
+        g.addExit(edge.getTo());
         graphStack.push(g);
     }
 }

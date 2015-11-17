@@ -57,12 +57,12 @@ public class LexInput {
                     HashSet<String> classes =
                             Regex.getMatchedStrings(Regex.classPattern, patternPair[1]);
                     classes.forEach(s -> {
-                        //update patternPair[1]
+                        //update pattern by already defined pattern
                         String replacement = regexs.get(s);
                         if (replacement == null) {
                             throw new IllegalArgumentException("unknown regex class " + s);
                         }
-                        patternPair[1] = patternPair[1].replace(s, replacement);
+                        patternPair[1] = patternPair[1].replace(s, "(" + replacement + ")");
                     });
                 },
                 scanner);

@@ -5,6 +5,7 @@ import lex.Operators;
 import util.Stack;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * Created by zzt on 11/13/15.
@@ -16,6 +17,8 @@ public class Graph {
     private LinkedList<Vertex> vertices = new LinkedList<>();
     private ArrayList<Vertex> exit = new ArrayList<>();
     private HashMap<VertexSet, VertexSet> core2closure = new HashMap<>();
+    private ArrayList<Edge> edges;
+    private HashSet<Character> operands;
 
     public Graph(ArrayList<Op> suffix) {
         Stack<Graph> stack = new Stack<>();
@@ -35,6 +38,13 @@ public class Graph {
         res.exit.addAll(src.exit);
     }
 
+    /**
+     * If you have more than one exit for a given input string, the behaviour is undefined
+     *
+     * @param nfa      The NFA graph
+     * @param stateSet A new state of DFA
+     * @param vertex   A new vertex in the graph
+     */
     public static void checkEndAndSetTranslation(Graph nfa, VertexSet stateSet, Vertex vertex) {
         stateSet.getIndexes().forEach(index -> {
             Vertex v = nfa.getVertex(index);
@@ -45,7 +55,13 @@ public class Graph {
     }
 
     public boolean isEmpty() {
-        return vertices.isEmpty() || exit.isEmpty();
+        if (vertices.isEmpty()) {
+            if (exit.isEmpty()) {
+                return true;
+            }
+            throw new IllegalArgumentException("wrong state of exit and vertices");
+        }
+        return false;
     }
 
     public Graph() {
@@ -100,18 +116,19 @@ public class Graph {
                 if (!res.oneExit()) {
                     throw new IllegalArgumentException("res has more than one exit, can't merge");
                 }
-                Vertex.endStartMerge(res.end(), src.start());
+                Vertex.mergeOutEdge(res.end(), src.start());
+                src.vertices.remove(src.start());
                 res.updateEnd(src.end());
                 break;
         }
         res.vertices.addAll(src.vertices);
     }
 
-    private void addStart(Vertex vertex) {
+    public void addStart(Vertex vertex) {
         vertices.add(0, vertex);
     }
 
-    private void updateEnd(Vertex end) {
+    public void updateEnd(Vertex end) {
         exit.set(0, end);
     }
 
@@ -126,14 +143,14 @@ public class Graph {
      * @param v    The start vertex of this dfs
      * @param edge The edge to travel
      *
-     * @return The dfs result set -- which have to use the index to identify
-     * every vertex uniquely
+     * @return The dfs result set -- which have to use the index to identify every vertex uniquely
      */
     public VertexSet dfs(Vertex v, Edge edge) {
         VertexSet res = new VertexSet();
         recursiveDfs(res, v, edge);
         recoverTravelState(res);
-        // TODO check the hashCode and equals of ArrayList
+        v.recoverState();
+
         if (core2closure.containsKey(res)) {
             return core2closure.get(res);
         }
@@ -143,9 +160,12 @@ public class Graph {
     }
 
     /**
+     * store the vertices that `v` can walk to via `target` edge
+     * <p>
      * Remember to recover the state of vertex when finish dfs
-     *  @param res The arrayList to contain the visited vertices index
-     * @param v The start vertex
+     *
+     * @param res    The arrayList to contain the visited vertices index
+     * @param v      The start vertex
      * @param target The target edge to through
      */
     private void recursiveDfs(VertexSet res, Vertex v, Edge target) {
@@ -153,19 +173,29 @@ public class Graph {
             return;
         }
         v.setTravel(TraversalState.VISITING);
-        v.getOutEdges().stream().filter(target::equals).forEach(edge -> recursiveDfs(res, edge.getTo(), target));
+        v.getOutEdges().stream().filter(target::equals).forEach(edge -> {
+            recursiveDfs(res, edge.getTo(), target);
+            res.add(edge.getTo().ordinal());
+        });
         v.setTravel(TraversalState.VISITED);
-        res.add(v.ordinal());
     }
 
-    public VertexSet epsilonClosure(VertexSet vertexesIndex) {
+    /**
+     * fulfill by the dfs
+     *
+     * @param verticesIndex ArrayList of Vertices
+     * @return the closure of input
+     */
+    public VertexSet epsilonClosure(VertexSet verticesIndex) {
         VertexSet tmp = new VertexSet();
-        for (Integer i : vertexesIndex.getIndexes()) {
+        for (Integer i : verticesIndex.getIndexes()) {
             recursiveDfs(tmp, vertices.get(i), Edge.epsilon());
         }
         recoverTravelState(tmp);
-        vertexesIndex.addAll(tmp);
-        return vertexesIndex;
+        recoverTravelState(verticesIndex);
+
+        verticesIndex.addAll(tmp);
+        return verticesIndex;
     }
 
     private void recoverTravelState(VertexSet tmp) {
@@ -187,16 +217,72 @@ public class Graph {
     public HashMap<Character, VertexSet> dfs(VertexSet integers) {
         HashMap<Character, VertexSet> res = new HashMap<>();
 
-        for (Integer index : integers.getIndexes()) {
+        ArrayList<Integer> indexes = integers.getIndexes();
+        for (Integer index : indexes) {
             Vertex vertex = vertices.get(index);
             for (Edge edge : vertex.getOutEdges()) {
                 if (edge.isEpsilon()) {
                     continue;
                 }
-                VertexSet vertexes = dfs(vertex, edge);
-                res.put(edge.getOperand(), vertexes);
+                if (res.containsKey(edge.getOperand())) {
+                    VertexSet original = res.get(edge.getOperand());
+                    original.add(edge.getTo().ordinal());
+                } else {
+                    VertexSet vertexSet = new VertexSet();
+                    vertexSet.add(edge.getTo().ordinal());
+                    res.put(edge.getOperand(), vertexSet);
+                }
             }
         }
+        for (Character character : res.keySet()) {
+            VertexSet set = res.get(character);
+            res.put(character, epsilonClosure(set));
+        }
         return res;
+    }
+
+    public void merge(VertexSet set) {
+        Vertex main = vertices.get(0);
+        for (Integer integer : set.getIndexes()) {
+            Vertex src = vertices.get(integer);
+            merge(main, src);
+            vertices.remove(src);
+        }
+    }
+
+    private void merge(Vertex main, Vertex src) {
+        Vertex.mergeOutEdge(main, src);
+        vertices.remove(src);
+        // merge the edge go in `src` to `main`
+        getEdges().stream().filter(edge -> edge.getTo() == src).forEach(edge -> edge.setTo(main));
+    }
+
+    /**
+     * For edge.equals() compare just operand so just use the operand
+     *
+     * @return The no duplicate result of operands in the edges
+     */
+    public HashSet<Character> getOperands() {
+        if (operands == null) {
+            operands = new HashSet<>();
+            for (Vertex vertex : vertices) {
+                operands.addAll(vertex.getOutEdges().stream().map(Edge::getOperand).collect(Collectors.toList()));
+            }
+        }
+        return operands;
+    }
+
+    public ArrayList<Edge> getEdges() {
+        if (edges == null) {
+            edges = new ArrayList<>();
+            for (Vertex vertex : vertices) {
+                edges.addAll(vertex.getOutEdges());
+            }
+        }
+        return edges;
+    }
+
+    public void addExit(Vertex to) {
+        exit.add(to);
     }
 }

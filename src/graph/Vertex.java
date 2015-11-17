@@ -34,7 +34,7 @@ public class Vertex {
         return outEdges;
     }
 
-    public static void endStartMerge(Vertex res, Vertex src) {
+    public static void mergeOutEdge(Vertex res, Vertex src) {
         // merge out edge and in edge, for src is the start state, no other in edge, so merge out is enough
         res.outEdges.addAll(src.outEdges);
     }
@@ -46,12 +46,14 @@ public class Vertex {
         if (start) {
             e1 = new Edge(newVertex, main);
             e2 = new Edge(newVertex, src);
+            newVertex.addOutEdge(e1);
+            newVertex.addOutEdge(e2);
         } else {
             e1 = new Edge(main, newVertex);
             e2 = new Edge(src, newVertex);
+            main.addOutEdge(e1);
+            src.addOutEdge(e2);
         }
-        newVertex.addOutEdge(e1);
-        newVertex.addOutEdge(e2);
         return newVertex;
     }
 
@@ -73,5 +75,41 @@ public class Vertex {
 
     public void setIndex(int index) {
         this.index = index;
+    }
+
+    public int getIndex() {
+        return index;
+    }
+
+    @Override
+    public String toString() {
+        StringBuilder stringBuilder = new StringBuilder();
+        for (Edge outEdge : outEdges) {
+            stringBuilder.append(outEdge.toString());
+        }
+        if (translation == null) {
+            return "Vertex{" +
+                    "index=" + index +
+                    ", outEdges=" + stringBuilder.toString() +
+                    '}';
+        }
+        return "Vertex{" +
+                "index=" + index +
+                ", translation='" + translation + '\'' +
+                ", outEdges=" + stringBuilder.toString() +
+                '}';
+    }
+
+    public Vertex getNeighbor(char operand) {
+        for (Edge outEdge : outEdges) {
+            if (operand == outEdge.getOperand()) {
+                return outEdge.getTo();
+            }
+        }
+        return null;
+    }
+
+    public void recoverState() {
+        state = TraversalState.NOT_VISIT;
     }
 }

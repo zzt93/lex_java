@@ -38,7 +38,7 @@ public class LexOutput {
             "    $4\n" +
             "}";
 
-    public static void outPutCSrc(Graph dfao) {
+    public static void outPutCSrc(Graph dfao, String outFileName) {
         String method = produceSwitch(dfao);
         // write to file
     }

@@ -14,11 +14,15 @@ public enum Operators implements Op {
 
     LEFT_P('(', 10) {
         @Override
-        public void operateOnStack(Stack<Graph> graphStack) {}
+        public void operateOnStack(Stack<Graph> graphStack) {
+            throw new IllegalArgumentException("should not run to here");
+        }
     },
     RIGHT_P(')', -1) {
         @Override
-        public void operateOnStack(Stack<Graph> graphStack) {}
+        public void operateOnStack(Stack<Graph> graphStack) {
+            throw new IllegalArgumentException("should not run to here");
+        }
     },
 
     // Precedence: the first three are equal but larger than following
@@ -34,6 +38,9 @@ public enum Operators implements Op {
             end.addOutEdge(new Edge(end, nEnd));
 
             end.addOutEdge(new Edge(end, start));
+
+            g.addStart(nStart);
+            g.addVertex(nEnd).updateEnd(nEnd);
             graphStack.push(g);
         }
     },
@@ -49,6 +56,9 @@ public enum Operators implements Op {
             end.addOutEdge(new Edge(end, nEnd));
 
             nStart.addOutEdge(new Edge(nStart, nEnd));
+
+            g.addStart(nStart);
+            g.addVertex(nEnd).updateEnd(nEnd);
             graphStack.push(g);
         }
     },
@@ -60,11 +70,15 @@ public enum Operators implements Op {
             Vertex start = g.start();
             Vertex nStart = new Vertex();
             Vertex nEnd = new Vertex();
+            // set edge
             nStart.addOutEdge(new Edge(nStart, start));
             end.addOutEdge(new Edge(end, nEnd));
 
             end.addOutEdge(new Edge(end, start));
             nStart.addOutEdge(new Edge(nStart, nEnd));
+            // add vertex
+            g.addStart(nStart);
+            g.addVertex(nEnd).updateEnd(nEnd);
             graphStack.push(g);
         }
     },

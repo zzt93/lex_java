@@ -19,6 +19,7 @@ public class Edge {
         this.operand = operand;
         from = new Vertex();
         to = new Vertex();
+        from.addOutEdge(this);
     }
 
     /**
@@ -75,5 +76,17 @@ public class Edge {
 
     public static Edge epsilon() {
         return new Edge();
+    }
+
+    @Override
+    public String toString() {
+        return "Edge{" +
+                "operand=" + operand +
+                "-> " + to.getIndex() +
+                '}';
+    }
+
+    public void setTo(Vertex to) {
+        this.to = to;
     }
 }
