@@ -271,6 +271,6 @@ public class Lex {
 
     public static void main(String[] args) throws IOException {
         Lex lex = new Lex("book.l");
-        lex.produceFile("res");
+        lex.produceFile("res.c");
     }
 }

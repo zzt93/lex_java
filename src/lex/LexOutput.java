@@ -35,16 +35,31 @@ public class LexOutput {
             "// use last enum element to replace it\n" +
             "int count[#3];\n" +
             "\n" +
-            "int main() {\n" +
-            "    char word[256];\n" +
-            "    while (scanf(\"%c\", word) >= 0) {\n" +
-            "        int type = lexical(word);\n" +
+            "// the state number of DFA\n" +
+            "int state = 0;\n" +
+            "#define FOUND -1\n" +
             "\n" +
-            "        printf(\"(%d, %s, %d)\", type, word, count[type]++);\n" +
+            "#define MAX 256\n" +
+            "\n" +
+            "int lexical(char);\n" +
+            "\n" +
+            "int main() {\n" +
+            "    char c;\n" +
+            "    char word[MAX];\n" +
+            "    int i = 0;\n" +
+            "    while (scanf(\" %c\", &c) >= 0) {\n" +
+            "        word[i++] = c;\n" +
+            "        int type = lexical(c);\n" +
+            "        if (state == FOUND) {\n" +
+            "            word[i] = '\\0';\n" +
+            "            printf(\"(%d, %s, %d)\\n\", type, word, count[type]++);\n" +
+            "            state = 0;\n" +
+            "            i = 0;\n" +
+            "        }\n" +
             "    }\n" +
             "}\n" +
             "\n" +
-            "int lexical(char *str) {\n" +
+            "int lexical(char c) {\n" +
             "    #4\n" +
             "}";
 
@@ -52,11 +67,13 @@ public class LexOutput {
     public static final String STATE_NUM = "#stateNum";
     public static final String INNER_CASE = "#innerCase";
     public static final String OPERAND = "#operand";
+    public static final String STATEMENT = "#statement";
+
 
     public static final String CASE =
             "        case " + STATE_NUM + ":\n" +
                     "            switch (c) {\n" +
-                    "                " + INNER_CASE + "\n" +
+                    INNER_CASE + "\n" +
                     "                default:\n" +
                     "                    exit(1);\n" +
                     "            }\n" +
@@ -64,7 +81,7 @@ public class LexOutput {
 
     public static final String INNER_CASE_BODY =
             "                case '" + OPERAND + "':\n" +
-                    "                    #statement\n" +
+                    "                    " + STATEMENT + "\n" +
                     "                    break;\n";
 
     public static final String SWITCH_END =
@@ -79,12 +96,14 @@ public class LexOutput {
         BufferedWriter bufferedWriter =
                 new BufferedWriter(new FileWriter(outFileName));
         StringHelper.replace(cFile, SWITCH, s);
+        System.out.println(cFile);
         bufferedWriter.write(cFile.toString());
+        bufferedWriter.close();
     }
 
     private static String produceSwitch(Graph dfao) {
         dfao.makeIndex();
-        StringBuilder stringBuilder = new StringBuilder("switch (s) {\n");
+        StringBuilder stringBuilder = new StringBuilder("switch (state) {\n");
         for (Vertex vertex : dfao.getVertices()) {
             stringBuilder.append(CASE);
             StringHelper.replace(stringBuilder, STATE_NUM, "" + vertex.ordinal());
@@ -92,12 +111,14 @@ public class LexOutput {
                 stringBuilder.insert(stringBuilder.indexOf(INNER_CASE), INNER_CASE_BODY);
                 StringHelper.replace(stringBuilder, OPERAND, "" + edge.getOperand());
                 Vertex to = edge.getTo();
+                int offset = stringBuilder.indexOf(STATEMENT);
                 if (to.isEndState()) {
-                    stringBuilder.append(to.getTranslation());
-                    stringBuilder.append("{ state = FOUND;\n}");
+                    stringBuilder.insert(offset, "{state = FOUND;}\n" + to.getTranslation());
                 } else {
-                    stringBuilder.append("{ state = ").append(to.ordinal()).append(";\n}");
+                    String str = "{state = " + to.ordinal() + ";}\n";
+                    stringBuilder.insert(offset, str);
                 }
+                StringHelper.replace(stringBuilder, STATEMENT, "");
             }
             StringHelper.replace(stringBuilder, INNER_CASE, "");
         }

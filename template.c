@@ -11,12 +11,17 @@ int count[#3];
 
 // the state number of DFA
 int state = 0;
-##define FOUND -1
+#define FOUND -1
+
+#define MAX 256
+
+int lexical(char);
 
 int main() {
     char c;
+    char word[MAX];
     int i = 0;
-    while (scanf("%c", c) >= 0) {
+    while (scanf(" %c", &c) >= 0) {
         word[i++] = c;
         int type = lexical(c);
         if (state == FOUND) {

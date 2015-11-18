@@ -15,17 +15,8 @@ IF, THEN, ELSE, ID, NUMBER, RELOP
 
 //{1} {/* no action and no return */}
 //{2} {/* no action and no return */}
-{3} {/* no action and no return */}
+{3} { return ID; }
 
 
 %%
 
-int installlDQ {/* function to install the lexeme, whose
-first character is pointed to by yytext,
-arid whose length is yyleng, into the
-symbol table and return a pointer
-thereto */
-}
-int installNumO {/* similar to installlD, but puts numer-
-ical constants into a separate table */
-}
